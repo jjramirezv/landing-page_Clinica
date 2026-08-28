@@ -1,14 +1,23 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 
-const connectionString = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+type SqlFn = NeonQueryFunction<false, false>;
 
-if (!connectionString) {
-  throw new Error(
-    "Falta la variable de entorno DATABASE_URL (o POSTGRES_URL) para conectar con la base de datos."
-  );
+let client: SqlFn | null = null;
+
+function getClient(): SqlFn {
+  if (!client) {
+    const connectionString = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+    if (!connectionString) {
+      throw new Error(
+        "Falta la variable de entorno DATABASE_URL (o POSTGRES_URL) para conectar con la base de datos."
+      );
+    }
+    client = neon(connectionString);
+  }
+  return client;
 }
 
-export const sql = neon(connectionString);
+export const sql: SqlFn = ((...args: Parameters<SqlFn>) => getClient()(...args)) as SqlFn;
 
 let ready: Promise<void> | null = null;
 
